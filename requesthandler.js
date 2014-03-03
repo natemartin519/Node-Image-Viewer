@@ -1,9 +1,20 @@
-function start() {
-    console.log('Request handler \'start\' wes called')
+var exec = require("child_process").exec;
+
+function start(response) {
+    console.log('Request handler \'start\' wes called');
+
+    exec("ls -lah", function (error, stdout, stderr) {
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write(stdout);
+        response.end();
+    });
 }
 
-function upload() {
-    console.log('Request handler \'upload\' wes called')
+function upload(response) {
+    console.log('Request handler \'upload\' wes called');
+    response.writeHead(200, {"Content-Type": "text/plain"});
+    response.write("Hello Updoad");
+    response.end();
 }
 
 exports.start  = start;
