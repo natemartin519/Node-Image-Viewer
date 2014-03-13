@@ -1,59 +1,94 @@
 var querystring = require('querystring'),
     fs          = require('fs'),
-    formidable  = require('formidable');
+    formidable  = require('formidable'),
+    path        = require('path');
 
-function start(response) {
-    console.log('Request handler \'start\' wes called');
+function home(response, request, filename) {
 
-    var body = '<!doctype html>' +
-        '<html lang="en">' +
-        '<head>' +
-        '<meta charset="UTF-8">' +
-        '<title>My First Node Page</title>' +
-        '</head>' +
-        '<body>' +
-        '<form action="/upload" enctype ="multipart/form-data" method="post">' +
-        '<input type="file" name="upload">' +
-        '<input type="submit" value="Upload file">'+
-        '</form>' +
-        '</body>' +
-        '</html>';
+    if (typeof filename === 'undefined') {
+        filename = 'index.html';
+    }
 
-    response.writeHead(200, {'Content-Type': 'text/html'});
-    response.write(body);
-    response.end();
+    fs.readFile("./app/" + filename, function(err, file) {
+         if(err) {
+             response.writeHeader(500, {"Content-Type": "text/plain"});
+             response.write(err + "\n");
+             response.end();
+         }
+         else {
+            response.writeHeader(200);
+            response.write(file, 'utf-8');
+            response.end();
+        }
+    });
 }
 
-function upload(response, request) {
-    console.log('Request handler \'upload\' wes called');
+function list(response, request, filename) {
+    fs.readdir('/tmp/', function(err, files) {
+        if(err) {
+            response.writeHeader(500, {"Content-Type": "text/plain"});
+            response.write(err + "\n");
+            response.end();
+        } else {
+            response.writeHeader(200, {"Content-Type": "text/html"});
+            response.write(files.join("<br>"));
+            response.end();
+        }
+    });
+}
+
+function upload(response, request, filename) {
 
     var form = new formidable.IncomingForm();
 
-    console.log('About to parse');
-    form.parse(request, function(error, fields, files) {
-        console.log('Parsing done');
 
-        fs.rename(files.upload.path, '/tmp/test.png', function(error) {
+    form.parse(request, function(error, fields, files) {
+
+        fs.rename(files.upload.path, '/tmp/' + files.upload.name, function(error) {
             if (error) {
-                fs.unlink('/tmp.test.png');
-                fs.rename(files.upload.path, '/tmp/test.png');
+                fs.unlink('/tmp/' + files.upload.name);
+                fs.rename(files.upload.path, '/tmp/' + files.upload.name);
             }
         });
 
         response.writeHead(200, {'Content-Type': 'text/html'});
-        response.write('Receiver Image:<br>');
-        response.write('<img src="/show">');
+        response.write('<h1>File Uploaded!</h1>');
         response.end();
     });
-
 }
 
-function show(response) {
-    console.log('Request handler \'show\' was callsd');
-    response.writeHead(200, {'Content-Type': 'image/png'});
-    fs.createReadStream('/tmp/test.png').pipe(response);
+function show(response, request, filename) {
+
+    var fileNotFound = function() {
+        response.writeHead(404, {"Content-Type": "text/plain"});
+        response.write("404 Not Found");
+        response.end();
+    };
+
+    var types = ['.png', '.jpg', '.jpeg', '.gif'];
+    var extension = path.extname(filename);
+
+    var checkExtension = types.some(function(value) {
+                            return extension.toLowerCase().indexOf(value) > -1;
+                         });
+
+    if (checkExtension) {
+
+        fs.exists('/tmp/' + filename, function(exists) {
+            if (exists) {
+                response.writeHead(200);
+                fs.createReadStream('/tmp/' + filename).pipe(response);
+            } else {
+                fileNotFound();
+            }
+        });
+    } else {
+
+        fileNotFound();
+    }
 }
 
-exports.start  = start;
+exports.home  = home;
+exports.list  = list;
 exports.upload = upload;
 exports.show = show;

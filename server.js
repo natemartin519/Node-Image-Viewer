@@ -1,14 +1,22 @@
 var http = require('http'),
+    path = require('path');
     url  = require('url');
 
 function start(route, handle) {
 
     function onRequest(request, response) {
 
-        var pathname = url.parse(request.url).pathname;
-        console.log("Request for " + pathname + " received.");
+        var parsedUrl = {
+            path: url.parse(request.url).pathname
+        };
 
-        route(handle, pathname, response, request);
+        if ( path.extname(parsedUrl.path) != '' ) {
+            parsedUrl.path = path.dirname(request.url);
+            parsedUrl.file = path.basename(request.url)
+        }
+
+        console.log('Request for ' + parsedUrl.path + ' received');
+        route(handle, parsedUrl, response, request);
     }
 
     http.createServer(onRequest).listen(8000);
